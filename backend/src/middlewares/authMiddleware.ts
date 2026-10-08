@@ -1,41 +1,55 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { CargoUsuario } from '../types';
 
-// Estendemos o Request do Express para podermos injetar o ID do usuário autenticado
-export interface AuthRequest extends Request {
-  usuarioId?: number;
+export interface RequisicaoAutenticada extends Request {
+  usuarioLogado?: {
+    idUsuario: number;
+    email: string;
+    cargo: CargoUsuario;
+  };
 }
 
-export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  const authHeader = req.headers.authorization;
+export const autenticarToken = (
+  req: RequisicaoAutenticada,
+  res: Response,
+  next: NextFunction
+): Response | void => {
+  const cabecalhoAuth = req.headers['authorization'];
+  const token = cabecalhoAuth && cabecalhoAuth.split(' ')[1];
 
-  if (!authHeader) {
-    res.status(401).json({ erro: 'Acesso negado. Token não fornecido.' });
-    return;
+  if (!token) {
+    return res.status(401).json({ mensagem: 'Acesso negado. Token não fornecido.' });
   }
-
-  // O padrão do header é "Bearer <token>"
-  const partes = authHeader.split(' ');
-  if (partes.length !== 2 || partes[0] !== 'Bearer') {
-    res.status(401).json({ erro: 'Token mal formatado.' });
-    return;
-  }
-
-  const token = partes[1];
 
   try {
-    // IMPORTANTE: Em produção, o secret deve vir do .env (process.env.JWT_SECRET)
-    const secret = process.env.JWT_SECRET || 'secreta_dev_super_segura';
-    
-    // Decodifica e extrai o ID que colocamos no payload do token
-    const decoded = jwt.verify(token, secret) as { id: number };
-    
-    // Injeta o ID na requisição para que os controllers saibam quem está logado
-    req.usuarioId = decoded.id;
-    
-    return next(); // Libera a passagem para o Controller
-  } catch (error) {
-    res.status(401).json({ erro: 'Token inválido ou expirado.' });
-    return;
+    const chaveSecreta = process.env.JWT_SECRET || 'chave_secreta_ms2_vestuario';
+    const dadosDecodificados = jwt.verify(token, chaveSecreta) as any;
+
+    req.usuarioLogado = {
+      idUsuario: dadosDecodificados.idUsuario,
+      email: dadosDecodificados.email,
+      cargo: dadosDecodificados.cargo
+    };
+
+    return next();
+  } catch (erro) {
+    return res.status(403).json({ mensagem: 'Token inválido ou expirado.' });
   }
+};
+
+export const autorizarCargos = (cargosPermitidos: CargoUsuario[]) => {
+  return (req: RequisicaoAutenticada, res: Response, next: NextFunction): Response | void => {
+    if (!req.usuarioLogado) {
+      return res.status(401).json({ mensagem: 'Utilizador não autenticado.' });
+    }
+
+    if (!cargosPermitidos.includes(req.usuarioLogado.cargo)) {
+      return res.status(403).json({ 
+        mensagem: 'Acesso negado. Perfil sem permissão para esta operação.' 
+      });
+    }
+
+    return next();
+  };
 };

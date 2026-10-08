@@ -9,7 +9,7 @@ export type StatusVenda = 'CONCLUIDA' | 'CANCELADA';
  * Interface que representa a entidade de Usuários do sistema
  */
 export interface IUsuario {
-  idUsuario: number;
+  idUsuario?: number;
   nome: string;
   email: string;
   senha?: string;
@@ -21,9 +21,9 @@ export interface IUsuario {
  * Interface para gestão de dados dos Clientes
  */
 export interface ICliente {
-  idCliente: number;
+  idCliente?: number;
   nome: string;
-  cpfCnpj?: string;
+  cpfCnpj: string;
   telefone?: string;
   email?: string;
   criadoEm: Date;
@@ -33,7 +33,7 @@ export interface ICliente {
  * Interface para categorização dos produtos de vestuário
  */
 export interface ICategoria {
-  idCategoria: number;
+  idCategoria?: number;
   nome: string;
   descricao?: string;
   ativo: boolean;
@@ -43,7 +43,7 @@ export interface ICategoria {
  * Interface referente ao cadastro base do Produto
  */
 export interface IProduto {
-  idProduto: number;
+  idProduto?: number;
   nome: string;
   precoBase: number;
   ativo: boolean;
@@ -54,7 +54,7 @@ export interface IProduto {
  * Interface para as Variantes de produtos (SKUs com tamanhos e cores específicas)
  */
 export interface IVarianteSku {
-  idVarianteSku: number;
+  idVarianteSku?: number;
   sku: string;
   codigoBarras?: string;
   tamanho: string;
