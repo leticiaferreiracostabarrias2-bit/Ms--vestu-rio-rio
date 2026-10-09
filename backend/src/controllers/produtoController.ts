@@ -7,7 +7,7 @@ export class ProdutoController {
     try {
       const { nome, precoBase, ativo, categoriaId } = req.body;
 
-      if (!nome || !precoBase || !categoriaId) {
+      if (!nome || precoBase === undefined || !categoriaId) {
         return res.status(400).json({ mensagem: 'Campos obrigatórios do produto ausentes.' });
       }
 
@@ -15,6 +15,26 @@ export class ProdutoController {
       return res.status(201).json({ mensagem: 'Produto cadastrado com sucesso.', idProduto });
     } catch (erro) {
       return res.status(500).json({ mensagem: 'Erro ao criar produto.', erro });
+    }
+  }
+
+  static async buscarPorId(req: Request, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+      const idNum = Number(id);
+
+      if (isNaN(idNum)) {
+        return res.status(400).json({ mensagem: 'ID de produto inválido.' });
+      }
+
+      const produto = await ProdutoModel.buscarPorId(idNum);
+      if (!produto) {
+        return res.status(404).json({ mensagem: 'Produto não encontrado.' });
+      }
+
+      return res.status(200).json(produto);
+    } catch (erro) {
+      return res.status(500).json({ mensagem: 'Erro interno ao buscar produto.', erro });
     }
   }
 
@@ -45,6 +65,49 @@ export class ProdutoController {
       return res.status(200).json(produtos);
     } catch (erro) {
       return res.status(500).json({ mensagem: 'Erro interno ao listar produtos.', erro });
+    }
+  }
+
+  static async atualizar(req: Request, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+      const { nome, precoBase, ativo, categoriaId } = req.body;
+
+      const idNum = Number(id);
+      if (isNaN(idNum)) {
+        return res.status(400).json({ mensagem: 'ID de produto inválido.' });
+      }
+
+      const produtoExistente = await ProdutoModel.buscarPorId(idNum);
+      if (!produtoExistente) {
+        return res.status(404).json({ mensagem: 'Produto não encontrado.' });
+      }
+
+      await ProdutoModel.atualizar(idNum, { nome, precoBase, ativo, categoriaId });
+      return res.status(200).json({ mensagem: 'Produto atualizado com sucesso.' });
+    } catch (erro) {
+      return res.status(500).json({ mensagem: 'Erro interno ao atualizar produto.', erro });
+    }
+  }
+
+  static async excluir(req: Request, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+
+      const idNum = Number(id);
+      if (isNaN(idNum)) {
+        return res.status(400).json({ mensagem: 'ID de produto inválido.' });
+      }
+
+      const produtoExistente = await ProdutoModel.buscarPorId(idNum);
+      if (!produtoExistente) {
+        return res.status(404).json({ mensagem: 'Produto não encontrado.' });
+      }
+
+      await ProdutoModel.excluir(idNum);
+      return res.status(200).json({ mensagem: 'Produto excluído com sucesso.' });
+    } catch (erro) {
+      return res.status(500).json({ mensagem: 'Erro interno ao excluir produto.', erro });
     }
   }
 }

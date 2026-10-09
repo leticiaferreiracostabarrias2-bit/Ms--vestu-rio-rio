@@ -50,6 +50,7 @@ export class UsuarioModel {
         idusuarios AS idUsuario, 
         nome, 
         email, 
+        senha,
         cargo, 
         criado_em AS criadoEm 
       FROM usuarios 
@@ -83,5 +84,63 @@ export class UsuarioModel {
     });
     
     return linhas as Omit<IUsuario, 'senha'>[];
+  }
+
+  /**
+   * Atualiza as informações de um usuário existente pelo ID
+   */
+  static async atualizar(id: number, usuario: Partial<Omit<IUsuario, 'idusuarios' | 'criadoEm'>>): Promise<boolean> {
+    const campos: string[] = [];
+    const valores: any[] = [];
+
+    if (usuario.nome !== undefined) {
+      campos.push('nome = ?');
+      valores.push(usuario.nome);
+    }
+    if (usuario.email !== undefined) {
+      campos.push('email = ?');
+      valores.push(usuario.email);
+    }
+    if (usuario.senha !== undefined) {
+      campos.push('senha = ?');
+      valores.push(usuario.senha);
+    }
+    if (usuario.cargo !== undefined) {
+      campos.push('cargo = ?');
+      valores.push(usuario.cargo);
+    }
+
+    if (campos.length === 0) return false;
+
+    valores.push(id);
+    const queryStr = `
+      UPDATE usuarios 
+      SET ${campos.join(', ')} 
+      WHERE idusuarios = ?
+    `;
+
+    const [result] = await db.execute<ResultSetHeader>({
+      sql: queryStr,
+      values: valores
+    });
+
+    return result.affectedRows > 0;
+  }
+
+  /**
+   * Remove um usuário pelo ID
+   */
+  static async excluir(id: number): Promise<boolean> {
+    const queryStr = `
+      DELETE FROM usuarios 
+      WHERE idusuarios = ?
+    `;
+
+    const [result] = await db.execute<ResultSetHeader>({
+      sql: queryStr,
+      values: [id]
+    });
+
+    return result.affectedRows > 0;
   }
 }

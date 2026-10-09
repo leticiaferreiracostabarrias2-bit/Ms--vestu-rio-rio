@@ -3,7 +3,7 @@ import { IItemVenda } from '../types';
 import { db } from '../config/database';
 
 /**
- * Model estático para itens gravados em vendas e relatórios de curva ABC
+ * Model estático para manipulação de itens de venda e relatórios de desempenho/Curva ABC
  */
 export class ItemVendaModel {
 
@@ -57,7 +57,6 @@ export class ItemVendaModel {
   }
 
   static async buscarMaisVendidos(limite: number = 10): Promise<any[]> {
-    // Garantimos que o limite é convertido explicitamente para Number/Integer para o MySQL
     const limiteNumerico = Number(limite);
 
     const queryStr = `

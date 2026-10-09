@@ -92,4 +92,75 @@ export class UsuarioController {
       return res.status(500).json({ mensagem: 'Erro ao listar usuários.', erro });
     }
   }
+
+  /**
+   * Atualiza dados de um usuário mediante verificação de senha obrigatória
+   */
+  static async atualizar(req: Request, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+      const { nome, email, senhaAtual, novaSenha, cargo } = req.body;
+
+      const idNum = Number(id);
+      if (isNaN(idNum)) {
+        return res.status(400).json({ mensagem: 'ID de usuário inválido.' });
+      }
+
+      if (!senhaAtual) {
+        return res.status(400).json({ mensagem: 'Senha atual é obrigatória para autorizar a atualização.' });
+      }
+
+      const usuarioExistente = await UsuarioModel.buscarPorId(idNum);
+      if (!usuarioExistente) {
+        return res.status(404).json({ mensagem: 'Usuário não encontrado.' });
+      }
+
+      // Valida se a senha informada corresponde à senha do cadastro no banco
+      if (usuarioExistente.senha !== senhaAtual) {
+        return res.status(401).json({ mensagem: 'Senha incorreta. Não foi possível atualizar os dados.' });
+      }
+
+      if (email && email !== usuarioExistente.email) {
+        const emailEmUso = await UsuarioModel.buscarPorEmail(email);
+        if (emailEmUso) {
+          return res.status(409).json({ mensagem: 'Este e-mail já está em uso por outro usuário.' });
+        }
+      }
+
+      await UsuarioModel.atualizar(idNum, { 
+        nome, 
+        email, 
+        senha: novaSenha || undefined, 
+        cargo 
+      });
+
+      return res.status(200).json({ mensagem: 'Usuário atualizado com sucesso.' });
+    } catch (erro) {
+      return res.status(500).json({ mensagem: 'Erro interno ao atualizar usuário.', erro });
+    }
+  }
+
+  /**
+   * Exclui um usuário pelo ID (acesso restrito aos cargos autorizados)
+   */
+  static async excluir(req: Request, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+
+      const idNum = Number(id);
+      if (isNaN(idNum)) {
+        return res.status(400).json({ mensagem: 'ID de usuário inválido.' });
+      }
+
+      const usuarioExistente = await UsuarioModel.buscarPorId(idNum);
+      if (!usuarioExistente) {
+        return res.status(404).json({ mensagem: 'Usuário não encontrado.' });
+      }
+
+      await UsuarioModel.excluir(idNum);
+      return res.status(200).json({ mensagem: 'Usuário excluído com sucesso.' });
+    } catch (erro) {
+      return res.status(500).json({ mensagem: 'Erro interno ao excluir usuário.', erro });
+    }
+  }
 }

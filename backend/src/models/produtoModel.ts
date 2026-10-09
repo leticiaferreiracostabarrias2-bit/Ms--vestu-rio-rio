@@ -3,7 +3,7 @@ import { IProduto } from '../types';
 import { db } from '../config/database';
 
 /**
- * Model estático responsável pelas consultas e inserções do Produto Pai
+ * Model estático responsável pelas consultas e persistência do Produto Pai
  */
 export class ProdutoModel {
 
@@ -50,7 +50,8 @@ export class ProdutoModel {
         p.nome, 
         p.preco_base AS precoBase, 
         p.ativo, 
-        c.nome AS nomeCategoria
+        c.nome AS nomeCategoria,
+        p.categorias_idcategorias AS categoriaId
       FROM produtos p
       INNER JOIN categorias c ON p.categorias_idcategorias = c.idcategorias
       WHERE p.ativo = 1
@@ -62,5 +63,63 @@ export class ProdutoModel {
     });
 
     return linhas;
+  }
+
+  /**
+   * Atualiza as informações de um produto existente pelo ID
+   */
+  static async atualizar(id: number, produto: Partial<Omit<IProduto, 'idProduto'>>): Promise<boolean> {
+    const campos: string[] = [];
+    const valores: any[] = [];
+
+    if (produto.nome !== undefined) {
+      campos.push('nome = ?');
+      valores.push(produto.nome);
+    }
+    if (produto.precoBase !== undefined) {
+      campos.push('preco_base = ?');
+      valores.push(produto.precoBase);
+    }
+    if (produto.ativo !== undefined) {
+      campos.push('ativo = ?');
+      valores.push(produto.ativo);
+    }
+    if (produto.categoriaId !== undefined) {
+      campos.push('categorias_idcategorias = ?');
+      valores.push(produto.categoriaId);
+    }
+
+    if (campos.length === 0) return false;
+
+    valores.push(id);
+    const queryStr = `
+      UPDATE produtos 
+      SET ${campos.join(', ')} 
+      WHERE idprodutos = ?
+    `;
+
+    const [result] = await db.execute<ResultSetHeader>({
+      sql: queryStr,
+      values: valores
+    });
+
+    return result.affectedRows > 0;
+  }
+
+  /**
+   * Remove um produto pelo ID
+   */
+  static async excluir(id: number): Promise<boolean> {
+    const queryStr = `
+      DELETE FROM produtos 
+      WHERE idprodutos = ?
+    `;
+
+    const [result] = await db.execute<ResultSetHeader>({
+      sql: queryStr,
+      values: [id]
+    });
+
+    return result.affectedRows > 0;
   }
 }

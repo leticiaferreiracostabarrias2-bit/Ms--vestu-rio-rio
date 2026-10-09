@@ -23,6 +23,7 @@ export interface IUsuario {
 export interface ICliente {
   idCliente?: number;
   nome: string;
+  senha: string;
   cpfCnpj: string;
   telefone?: string;
   email?: string;

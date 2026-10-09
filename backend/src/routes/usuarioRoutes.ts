@@ -11,7 +11,7 @@ const router = Router();
 // Endpoint de autenticação
 router.post('/login', UsuarioController.login);
 
-// Endpoint de cadastro aberto (agora público)
+// Endpoint de cadastro aberto (público)
 router.post('/', UsuarioController.criar);
 
 // ==========================================
@@ -23,5 +23,11 @@ router.post('/logout', autenticarToken, UsuarioController.logout);
 
 // Listagem restrita apenas a Gerentes e Admins
 router.get('/', autenticarToken, autorizarCargos(['GERENTE', 'ADMIN']), UsuarioController.listarTodos);
+
+// Atualização de usuário por ID (Exige envio da senhaAtual no body)
+router.put('/:id', autenticarToken, autorizarCargos(['GERENTE', 'ADMIN']), UsuarioController.atualizar);
+
+// Exclusão de usuário por ID (Restrito EXCLUSIVAMENTE a GERENTE e ADMIN)
+router.delete('/:id', autenticarToken, autorizarCargos(['GERENTE', 'ADMIN']), UsuarioController.excluir);
 
 export default router;
