@@ -1,5 +1,5 @@
 import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
-import { IProduto } from '../types';
+import { IProduto } from '../types/index';
 import { db } from '../config/database';
 
 /**

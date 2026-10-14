@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { VendaService } from '../services/vendaService';
 import { ItemVendaModel } from '../models/itemVendaModel';
 import { db } from '../config/database';
-import { CriarVendaDTO } from '../types';
+import { CriarVendaDTO } from '../types/index';
 
 export class VendaController {
   static async processarVenda(req: Request, res: Response): Promise<Response> {

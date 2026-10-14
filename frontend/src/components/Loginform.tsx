@@ -25,10 +25,10 @@ export function LoginForm() {
 
             if (resposta.ok) {
                 // Armazena Token JWT e dados do usuário autenticado
-                localStorage.setItem('kamikase_token', dados.token);
-                localStorage.setItem('kamikase_usuario', dados.usuario?.nome || dados.nome || 'Usuário');
-                localStorage.setItem('kamikase_email', dados.usuario?.email || email);
-                localStorage.setItem('kamikase_usuario_id', String(dados.usuario?.id || ''));
+                localStorage.setItem('vestuario_token', dados.token);
+                localStorage.setItem('vestuario_usuario', dados.usuario?.nome || dados.nome || 'Usuário');
+                localStorage.setItem('vestuario_email', dados.usuario?.email || email);
+                localStorage.setItem('vestuario_usuario_id', String(dados.usuario?.id || ''));
                 
                 // Redireciona para o painel
                 navegar('/dashboard');

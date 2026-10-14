@@ -1,5 +1,5 @@
 import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
-import { ICategoria } from '../types';
+import type { ICategoria } from '../types/index';
 import { db } from '../config/database';
 
 /**

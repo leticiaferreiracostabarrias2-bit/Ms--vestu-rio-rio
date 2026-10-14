@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { CargoUsuario } from '../types';
+import { CargoUsuario } from '../types/index';
 
 export interface RequisicaoAutenticada extends Request {
   usuarioLogado?: {

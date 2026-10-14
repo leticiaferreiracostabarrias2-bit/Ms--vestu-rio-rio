@@ -1,5 +1,5 @@
 import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
-import { IVarianteSku } from '../types';
+import { IVarianteSku } from '../types/index';
 import { db } from '../config/database';
 
 /**

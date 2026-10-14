@@ -21,7 +21,7 @@ router.post('/', UsuarioController.criar);
 // Encerramento de sessão
 router.post('/logout', autenticarToken, UsuarioController.logout);
 
-// Listagem restrita apenas a Gerentes e Admins
+// Listagem restrita a Gerentes e Admins
 router.get('/', autenticarToken, autorizarCargos(['GERENTE', 'ADMIN']), UsuarioController.listarTodos);
 
 // Atualização de usuário por ID (Exige envio da senhaAtual no body)

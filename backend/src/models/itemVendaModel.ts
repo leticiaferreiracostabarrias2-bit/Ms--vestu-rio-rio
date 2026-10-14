@@ -1,5 +1,5 @@
 import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
-import { IItemVenda } from '../types';
+import { IItemVenda } from '../types/index';
 import { db } from '../config/database';
 
 /**

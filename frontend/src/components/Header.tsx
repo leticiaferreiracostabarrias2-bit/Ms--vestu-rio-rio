@@ -3,14 +3,14 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 export function Header() {
     const navegar = useNavigate();
     const localizacao = useLocation();
-    const token = localStorage.getItem('kamikase_token');
-    const usuarioNome = localStorage.getItem('kamikase_usuario') || 'Usuário';
+    const token = localStorage.getItem('vestuario_token');
+    const usuarioNome = localStorage.getItem('vestuario_usuario') || 'Usuário';
 
     const lidarComLogout = () => {
-        localStorage.removeItem('kamikase_token');
-        localStorage.removeItem('kamikase_usuario');
-        localStorage.removeItem('kamikase_email');
-        localStorage.removeItem('kamikase_usuario_id');
+        localStorage.removeItem('vestuario_token');
+        localStorage.removeItem('vestuario_usuario');
+        localStorage.removeItem('vestuario_email');
+        localStorage.removeItem('vestuario_usuario_id');
         navegar('/login');
     };
 

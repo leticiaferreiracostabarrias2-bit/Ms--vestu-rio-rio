@@ -1,5 +1,12 @@
 import { Pool, PoolConnection } from 'mysql2/promise';
-import { CriarVendaDTO } from '../types/index';
+import { CriarVendaDTO } from '../types';
+
+interface IItemProcessado {
+  varianteSkuId: number;
+  quantidade: number;
+  precoUnitario: number;
+  subtotal: number;
+}
 
 interface IItemProcessado {
   varianteSkuId: number;
