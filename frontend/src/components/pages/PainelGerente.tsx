@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import { type Produto, type Categoria, type VarianteSku } from '../../types';
+import { type Produto, type Categoria, type CargoUsuario } from '../../types';
 import { FeedbackModal } from '../FeedbackModal';
 import { ConfirmacaoModal } from '../ConfirmacaoModal';
+import { Crown, DollarSign, Receipt, Shirt, Plus, Pencil, Trash2, Ban, X, UserPlus, Tags, FolderPlus } from 'lucide-react';
 
 interface VendaResumo {
   idvendas: number;
@@ -16,7 +17,7 @@ interface VendaResumo {
 }
 
 export function PainelGerente() {
-  const [abaAtiva, setAbaAtiva] = useState<'metricas' | 'vendas' | 'produtos'>('metricas');
+  const [abaAtiva, setAbaAtiva] = useState<'metricas' | 'vendas' | 'produtos' | 'usuarios'>('metricas');
 
   // Dados do Dashboard Financeiro
   const [vendas, setVendas] = useState<VendaResumo[]>([]);
@@ -33,6 +34,19 @@ export function PainelGerente() {
   const [nomeProduto, setNomeProduto] = useState('');
   const [precoBase, setPrecoBase] = useState<number>(0);
   const [categoriaId, setCategoriaId] = useState<number | ''>('');
+
+  // Estados da Gestão de Categorias
+  const [modalCategoriaAberto, setModalCategoriaAberto] = useState(false);
+  const [nomeCategoria, setNomeCategoria] = useState('');
+  const [descricaoCategoria, setDescricaoCategoria] = useState('');
+  const [salvandoCategoria, setSalvandoCategoria] = useState(false);
+
+  // Estados do Cadastro de Usuários
+  const [nomeUsuario, setNomeUsuario] = useState('');
+  const [emailUsuario, setEmailUsuario] = useState('');
+  const [senhaUsuario, setSenhaUsuario] = useState('');
+  const [cargoUsuario, setCargoUsuario] = useState<CargoUsuario>('CAIXA');
+  const [salvandoUsuario, setSalvandoUsuario] = useState(false);
 
   // Exclusão / Cancelamento de Venda
   const [vendaParaCancelar, setVendaParaCancelar] = useState<VendaResumo | null>(null);
@@ -161,6 +175,98 @@ export function PainelGerente() {
     }
   };
 
+  // Gestão de Categorias
+  const handleCriarCategoria = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nomeCategoria.trim()) return;
+
+    setSalvandoCategoria(true);
+    try {
+      await api.post('/categorias', {
+        nome: nomeCategoria.trim(),
+        descricao: descricaoCategoria.trim() || undefined
+      });
+
+      setModalFeedback({
+        visivel: true,
+        tipo: 'sucesso',
+        titulo: 'Categoria Criada!',
+        mensagem: `A categoria "${nomeCategoria.trim()}" foi adicionada com sucesso.`
+      });
+
+      setNomeCategoria('');
+      setDescricaoCategoria('');
+      carregarProdutosECategorias();
+    } catch (erro: any) {
+      setModalFeedback({
+        visivel: true,
+        tipo: 'erro',
+        titulo: 'Erro na Categoria',
+        mensagem: erro.response?.data?.mensagem || 'Falha ao criar categoria.'
+      });
+    } finally {
+      setSalvandoCategoria(false);
+    }
+  };
+
+  const excluirCategoria = async (idCat?: number) => {
+    if (!idCat) return;
+    try {
+      await api.delete(`/categorias/${idCat}`);
+      setModalFeedback({
+        visivel: true,
+        tipo: 'sucesso',
+        titulo: 'Categoria Excluída',
+        mensagem: 'A categoria foi removida com sucesso.'
+      });
+      carregarProdutosECategorias();
+    } catch (erro: any) {
+      setModalFeedback({
+        visivel: true,
+        tipo: 'erro',
+        titulo: 'Erro ao Excluir',
+        mensagem: erro.response?.data?.mensagem || 'Não é possível remover categorias vinculadas a produtos.'
+      });
+    }
+  };
+
+  // Cadastro de Novo Usuário (Aba Gerência)
+  const handleCriarUsuario = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nomeUsuario.trim() || !emailUsuario.trim() || !senhaUsuario.trim()) return;
+
+    setSalvandoUsuario(true);
+    try {
+      await api.post('/usuarios', {
+        nome: nomeUsuario.trim(),
+        email: emailUsuario.trim(),
+        senha: senhaUsuario.trim(),
+        cargo: cargoUsuario
+      });
+
+      setModalFeedback({
+        visivel: true,
+        tipo: 'sucesso',
+        titulo: 'Usuário Criado!',
+        mensagem: `O perfil de ${cargoUsuario} para "${nomeUsuario}" foi cadastrado e já pode realizar login.`
+      });
+
+      setNomeUsuario('');
+      setEmailUsuario('');
+      setSenhaUsuario('');
+      setCargoUsuario('CAIXA');
+    } catch (erro: any) {
+      setModalFeedback({
+        visivel: true,
+        tipo: 'erro',
+        titulo: 'Erro no Cadastro',
+        mensagem: erro.response?.data?.mensagem || 'Falha ao registrar novo usuário.'
+      });
+    } finally {
+      setSalvandoUsuario(false);
+    }
+  };
+
   // Estorno de Venda
   const confirmarEstornoVenda = async () => {
     if (!vendaParaCancelar || !motivoCancelamento.trim()) return;
@@ -205,38 +311,51 @@ export function PainelGerente() {
       <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
-            👑 Painel de Gerência & Controle
+            <Crown className="w-8 h-8 text-amber-400" />
+            Painel de Gerência & Controle
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Métricas financeiras, histórico de ganhos e gestão de produtos do sistema
+            Métricas financeiras, histórico de ganhos, produtos e usuários do sistema
           </p>
         </div>
 
         {/* NAVEGAÇÃO DE ABAS */}
-        <div className="flex bg-slate-900 p-1.5 rounded-xl border border-slate-700 self-start md:self-center">
+        <div className="flex flex-wrap bg-slate-900 p-1.5 rounded-xl border border-slate-700 self-start md:self-center gap-1">
           <button
             onClick={() => setAbaAtiva('metricas')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
               abaAtiva === 'metricas' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            💰 Ganhos & Métricas
+            <DollarSign className="w-4 h-4" />
+            Métricas
           </button>
           <button
             onClick={() => setAbaAtiva('vendas')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
               abaAtiva === 'vendas' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            📄 Histórico Vendas
+            <Receipt className="w-4 h-4" />
+            Vendas
           </button>
           <button
             onClick={() => setAbaAtiva('produtos')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
               abaAtiva === 'produtos' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            👕 CRUD Produtos
+            <Shirt className="w-4 h-4" />
+            Produtos
+          </button>
+          <button
+            onClick={() => setAbaAtiva('usuarios')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              abaAtiva === 'usuarios' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <UserPlus className="w-4 h-4" />
+            Criar Usuário
           </button>
         </div>
       </div>
@@ -317,9 +436,10 @@ export function PainelGerente() {
                             setVendaParaCancelar(v);
                             setMotivoCancelamento('');
                           }}
-                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg text-xs font-bold transition"
+                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg text-xs font-bold transition inline-flex items-center gap-1.5"
                         >
-                          🚫 Estornar
+                          <Ban className="w-3.5 h-3.5" />
+                          Estornar
                         </button>
                       )}
                     </td>
@@ -331,23 +451,33 @@ export function PainelGerente() {
         </div>
       )}
 
-      {/* ABA 3: CRUD DE PRODUTOS */}
+      {/* ABA 3: CRUD DE PRODUTOS & CATEGORIAS */}
       {abaAtiva === 'produtos' && (
         <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-4">
-          <div className="flex justify-between items-center border-b border-slate-700 pb-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-700 pb-4 gap-3">
             <div>
               <h2 className="text-lg font-bold text-white">Catálogo do Sistema</h2>
-              <p className="text-xs text-slate-400">Cadastre e altere informações dos produtos base</p>
+              <p className="text-xs text-slate-400">Cadastre e altere informações dos produtos e categorias</p>
             </div>
-            <button
-              onClick={() => {
-                fecharModalProduto();
-                setModalProdutoAberto(true);
-              }}
-              className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs transition shadow-lg shadow-cyan-500/20"
-            >
-              + Novo Produto
-            </button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => setModalCategoriaAberto(true)}
+                className="flex-1 sm:flex-none bg-slate-700 hover:bg-slate-600 text-cyan-300 border border-cyan-500/30 font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5"
+              >
+                <Tags className="w-4 h-4" />
+                Categorias ({categorias.length})
+              </button>
+              <button
+                onClick={() => {
+                  fecharModalProduto();
+                  setModalProdutoAberto(true);
+                }}
+                className="flex-1 sm:flex-none bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs transition shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                Novo Produto
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -361,19 +491,165 @@ export function PainelGerente() {
                 <div className="mt-4 flex gap-2 border-t border-slate-800 pt-3">
                   <button
                     onClick={() => abrirEditarProduto(prod)}
-                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 font-bold py-1.5 rounded-lg text-xs transition"
+                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 font-bold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1.5"
                   >
-                    ✏️ Editar
+                    <Pencil className="w-3.5 h-3.5" />
+                    Editar
                   </button>
                   <button
                     onClick={() => excluirProduto(prod.idProduto!)}
-                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg text-xs font-bold transition"
+                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center"
+                    title="Excluir Produto"
                   >
-                    🗑️
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ABA 4: CADASTRAR NOVO USUÁRIO */}
+      {abaAtiva === 'usuarios' && (
+        <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl max-w-2xl mx-auto space-y-6">
+          <div className="border-b border-slate-700 pb-4">
+            <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+              <UserPlus className="w-6 h-6 text-cyan-400" />
+              Cadastrar Novo Colaborador
+            </h2>
+            <p className="text-slate-400 text-xs mt-1">
+              Crie contas de acesso para caixas, gerentes ou administradores do sistema.
+            </p>
+          </div>
+
+          <form onSubmit={handleCriarUsuario} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-300 mb-1">Nome Completo *</label>
+              <input
+                type="text"
+                required
+                placeholder="Ex: João da Silva"
+                value={nomeUsuario}
+                onChange={(e) => setNomeUsuario(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 text-sm focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-300 mb-1">E-mail de Acesso *</label>
+              <input
+                type="email"
+                required
+                placeholder="joao@ms2vestuario.com"
+                value={emailUsuario}
+                onChange={(e) => setEmailUsuario(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 text-sm focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-300 mb-1">Senha Inicial *</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                placeholder="••••••••"
+                value={senhaUsuario}
+                onChange={(e) => setSenhaUsuario(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 text-sm focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-300 mb-1">Cargo / Perfil de Acesso *</label>
+              <select
+                value={cargoUsuario}
+                onChange={(e) => setCargoUsuario(e.target.value as CargoUsuario)}
+                className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 text-sm focus:outline-none focus:border-cyan-500"
+              >
+                <option value="CAIXA">CAIXA (Operação de PDV e Clientes)</option>
+                <option value="GERENTE">GERENTE (Relatórios, Produtos e Descontos)</option>
+                <option value="ADMIN">ADMIN (Acesso Total)</option>
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              disabled={salvandoUsuario}
+              className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold py-3 px-4 rounded-xl text-sm transition shadow-lg shadow-cyan-500/20 disabled:opacity-50"
+            >
+              {salvandoUsuario ? 'Cadastrando...' : 'Cadastrar Colaborador'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* MODAL GESTÃO DE CATEGORIAS */}
+      {modalCategoriaAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-700 pb-3">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <Tags className="w-5 h-5 text-cyan-400" />
+                Gerenciamento de Categorias
+              </h3>
+              <button onClick={() => setModalCategoriaAberto(false)} className="text-slate-400 hover:text-white p-1 rounded-lg transition">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Formulário de Criação Rápida */}
+            <form onSubmit={handleCriarCategoria} className="space-y-3 bg-slate-900 p-4 rounded-xl border border-slate-700">
+              <h4 className="text-xs font-bold uppercase text-cyan-400 flex items-center gap-1.5">
+                <FolderPlus className="w-4 h-4" /> Nova Categoria
+              </h4>
+              <input
+                type="text"
+                required
+                placeholder="Nome da Categoria (Ex: Calças, Camisetas)"
+                value={nomeCategoria}
+                onChange={(e) => setNomeCategoria(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 text-sm focus:outline-none focus:border-cyan-500"
+              />
+              <input
+                type="text"
+                placeholder="Descrição (Opcional)"
+                value={descricaoCategoria}
+                onChange={(e) => setDescricaoCategoria(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 text-sm focus:outline-none focus:border-cyan-500"
+              />
+              <button
+                type="submit"
+                disabled={salvandoCategoria}
+                className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-2 rounded-xl text-xs transition disabled:opacity-50"
+              >
+                {salvandoCategoria ? 'Salvando...' : 'Adicionar Categoria'}
+              </button>
+            </form>
+
+            {/* Listagem de Categorias */}
+            <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+              {categorias.length === 0 ? (
+                <p className="text-xs text-slate-500 text-center py-3">Nenhuma categoria cadastrada.</p>
+              ) : (
+                categorias.map((cat) => (
+                  <div key={cat.idCategoria} className="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-white">{cat.nome}</p>
+                      {cat.descricao && <p className="text-xs text-slate-400">{cat.descricao}</p>}
+                    </div>
+                    <button
+                      onClick={() => excluirCategoria(cat.idCategoria)}
+                      className="text-red-400 hover:text-red-300 p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition"
+                      title="Excluir Categoria"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -386,7 +662,9 @@ export function PainelGerente() {
               <h3 className="text-xl font-bold text-white">
                 {produtoEditandoId ? 'Editar Produto' : 'Novo Produto'}
               </h3>
-              <button onClick={fecharModalProduto} className="text-slate-400 hover:text-white text-xl font-bold">✕</button>
+              <button onClick={fecharModalProduto} className="text-slate-400 hover:text-white p-1 rounded-lg transition">
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
             <form onSubmit={handleSalvarProduto} className="space-y-3">

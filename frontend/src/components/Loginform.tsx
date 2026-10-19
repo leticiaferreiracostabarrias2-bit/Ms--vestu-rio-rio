@@ -107,15 +107,6 @@ export function LoginForm() {
           'Entrar'
         )}
       </button>
-
-      <div className="mt-6 pt-5 border-t border-slate-700/80 text-center">
-        <p className="text-slate-400 text-sm">
-          Ainda não tem conta?{' '}
-          <Link to="/" className="text-cyan-400 hover:text-cyan-300 font-semibold underline underline-offset-4 transition">
-            Cadastre-se aqui
-          </Link>
-        </p>
-      </div>
     </form>
   );
 }

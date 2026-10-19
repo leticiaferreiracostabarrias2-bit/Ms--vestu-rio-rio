@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
-import { Cadastro } from './components/pages/Cadastro';
 import { Login } from './components/pages/Login';
 import { Dashboard } from './components/pages/Dashboard';
 import { PDV } from './components/pages/PDV';
@@ -24,8 +23,7 @@ export function App() {
         <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto">
           <Routes>
             {/* Rotas Públicas */}
-            <Route path="/" element={<Cadastro />} />
-            <Route path="/cadastro" element={<Cadastro />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
 
             {/* Rotas Privadas / Protegidas */}
@@ -37,7 +35,7 @@ export function App() {
             <Route path="/gerente" element={<RotaProtegida><PainelGerente /></RotaProtegida>} />
 
             {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </main>
         <Footer />
