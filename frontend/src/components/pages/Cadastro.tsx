@@ -6,7 +6,7 @@ export function Cadastro() {
             {/* Cabeçalho da Página Inicial */}
             <div className="text-center space-y-3">
                 <span className="inline-flex items-center px-3.5 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                    Template Base Full Stack
+                    Template Base Vestuário
                 </span>
                 <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
                     Gestão e Autenticação de Usuários

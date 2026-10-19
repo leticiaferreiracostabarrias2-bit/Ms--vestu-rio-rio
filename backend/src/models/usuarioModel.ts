@@ -1,18 +1,31 @@
-import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
-import { IUsuario } from '../types';
-import { db } from '../config/database';
 
 /**
  * Model estático responsável pelas operações de persistência e consulta de usuários
  */
+import bcrypt from 'bcrypt';
+import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import { IUsuario } from '../types';
+import { db } from '../config/database';
+
 export class UsuarioModel {
   
   static async criar(usuario: Omit<IUsuario, 'idusuarios' | 'criadoEm'>): Promise<number> {
-    const queryStr = `
-      INSERT INTO usuarios (nome, email, senha, cargo)
-      VALUES (?, ?, ?, ?)
-    `;
-    const valores = [usuario.nome, usuario.email, usuario.senha, usuario.cargo];
+    // 1. Validação de segurança para garantir que a senha não é undefined
+    if (!usuario.senha) {
+      throw new Error('A senha é obrigatória para cadastrar um usuário.');
+    }
+
+    // 2. Criptografia da senha
+    const senhaHash = await bcrypt.hash(usuario.senha!, 10);
+
+    // 3. Garantia de que o cargo estará em maiúsculas conforme o ENUM do MySQL
+    const cargoFormatado = usuario.cargo ? usuario.cargo.toUpperCase() : 'CAIXA';
+
+const queryStr = `
+  INSERT INTO usuarios (nome, email, senha, cargo, criado_em)
+  VALUES (?, ?, ?, ?, NOW())
+`;
+    const valores = [usuario.nome, usuario.email, senhaHash, cargoFormatado];
     
     const [result] = await db.execute<ResultSetHeader>({
       sql: queryStr,

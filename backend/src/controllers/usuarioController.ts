@@ -1,9 +1,13 @@
+import bcrypt from 'bcrypt';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { UsuarioModel } from '../models/usuarioModel';
 
 export class UsuarioController {
 
+  /**
+   * Autentica o usuário e retorna o Token JWT
+   */
   /**
    * Autentica o usuário e retorna o Token JWT
    */
@@ -20,8 +24,9 @@ export class UsuarioController {
         return res.status(401).json({ mensagem: 'Credenciais inválidas.' });
       }
 
-      // Validação de senha
-      if (usuario.senha !== senha) {
+      // Validação segura de senha com bcrypt
+      const senhaValida = await bcrypt.compare(senha, usuario.senha);
+      if (!senhaValida) {
         return res.status(401).json({ mensagem: 'Credenciais inválidas.' });
       }
 
@@ -46,8 +51,9 @@ export class UsuarioController {
           cargo: usuario.cargo
         }
       });
-    } catch (erro) {
-      return res.status(500).json({ mensagem: 'Erro interno ao realizar login.', erro });
+    } catch (erro: any) {
+      console.error("❌ ERRO NO LOGIN:", erro);
+      return res.status(500).json({ mensagem: 'Erro interno ao realizar login.', erro: erro?.message || erro });
     }
   }
 
@@ -76,8 +82,9 @@ export class UsuarioController {
 
       const idUsuario = await UsuarioModel.criar({ nome, email, senha, cargo });
       return res.status(201).json({ mensagem: 'Usuário cadastrado com sucesso.', idUsuario });
-    } catch (erro) {
-      return res.status(500).json({ mensagem: 'Erro interno ao cadastrar usuário.', erro });
+    } catch (erro: any) {
+      console.error("❌ ERRO AO CRIAR USUÁRIO:", erro);
+      return res.status(500).json({ mensagem: 'Erro interno ao cadastrar usuário.', erro: erro?.message || erro });
     }
   }
 
@@ -88,8 +95,9 @@ export class UsuarioController {
     try {
       const usuarios = await UsuarioModel.buscarTodos();
       return res.status(200).json(usuarios);
-    } catch (erro) {
-      return res.status(500).json({ mensagem: 'Erro ao listar usuários.', erro });
+    } catch (erro: any) {
+      console.error("❌ ERRO AO LISTAR USUÁRIOS:", erro);
+      return res.status(500).json({ mensagem: 'Erro ao listar usuários.', erro: erro?.message || erro });
     }
   }
 
@@ -135,8 +143,9 @@ export class UsuarioController {
       });
 
       return res.status(200).json({ mensagem: 'Usuário atualizado com sucesso.' });
-    } catch (erro) {
-      return res.status(500).json({ mensagem: 'Erro interno ao atualizar usuário.', erro });
+    } catch (erro: any) {
+      console.error("❌ ERRO AO ATUALIZAR USUÁRIO:", erro);
+      return res.status(500).json({ mensagem: 'Erro interno ao atualizar usuário.', erro: erro?.message || erro });
     }
   }
 
@@ -159,8 +168,9 @@ export class UsuarioController {
 
       await UsuarioModel.excluir(idNum);
       return res.status(200).json({ mensagem: 'Usuário excluído com sucesso.' });
-    } catch (erro) {
-      return res.status(500).json({ mensagem: 'Erro interno ao excluir usuário.', erro });
+    } catch (erro: any) {
+      console.error("❌ ERRO AO EXCLUIR USUÁRIO:", erro);
+      return res.status(500).json({ mensagem: 'Erro interno ao excluir usuário.', erro: erro?.message || erro });
     }
   }
 }

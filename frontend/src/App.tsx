@@ -1,30 +1,45 @@
-import { Header } from "./components/Header";
-import { Footer } from "./components/Footer";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Cadastro } from "./components/pages/Cadastro";
-import { Login } from "./components/pages/Login";
-import { Dashboard } from "./components/pages/Dashboard";
+import type { ReactNode } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Header } from './components/Header';
+import { Footer } from './components/Footer';
+import { Cadastro } from './components/pages/Cadastro';
+import { Login } from './components/pages/Login';
+import { Dashboard } from './components/pages/Dashboard';
+import { PDV } from './components/pages/PDV';
+import { Clientes } from './components/pages/Clientes';
+import { Vendas } from './components/pages/Vendas';
+import { Relatorios } from './components/pages/Relatorios';
+import { PainelGerente } from './components/pages/PainelGerente';
 
-function App() {
+function RotaProtegida({ children }: { children: ReactNode }) {
+  const token = localStorage.getItem('@PDV:token');
+  return token ? children : <Navigate to="/login" replace />;
+}
+
+export function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-slate-900 flex flex-col font-sans text-slate-100">
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
         <Header />
-
-        <main className="flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto">
           <Routes>
-            {/* Página Inicial: Formulário de Cadastro do Usuário */}
+            {/* Rotas Públicas */}
             <Route path="/" element={<Cadastro />} />
             <Route path="/cadastro" element={<Cadastro />} />
-            
-            {/* Página de Autenticação / Login */}
             <Route path="/login" element={<Login />} />
-            
-            {/* Painel Administrativo / Dashboard Protegido */}
-            <Route path="/dashboard" element={<Dashboard />} />
+
+            {/* Rotas Privadas / Protegidas */}
+            <Route path="/dashboard" element={<RotaProtegida><Dashboard /></RotaProtegida>} />
+            <Route path="/pdv" element={<RotaProtegida><PDV /></RotaProtegida>} />
+            <Route path="/clientes" element={<RotaProtegida><Clientes /></RotaProtegida>} />
+            <Route path="/vendas" element={<RotaProtegida><Vendas /></RotaProtegida>} />
+            <Route path="/relatorios" element={<RotaProtegida><Relatorios /></RotaProtegida>} />
+            <Route path="/gerente" element={<RotaProtegida><PainelGerente /></RotaProtegida>} />
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
-
         <Footer />
       </div>
     </BrowserRouter>

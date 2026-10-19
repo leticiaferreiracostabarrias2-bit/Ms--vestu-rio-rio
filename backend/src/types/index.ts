@@ -12,7 +12,7 @@ export interface IUsuario {
   idUsuario?: number;
   nome: string;
   email: string;
-  senha?: string;
+  senha: string;
   cargo: CargoUsuario;
   criadoEm: Date;
 }

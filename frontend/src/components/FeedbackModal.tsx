@@ -1,3 +1,5 @@
+import { Check, X } from 'lucide-react';
+
 interface FeedbackModalProps {
     visivel: boolean;
     tipo?: 'sucesso' | 'erro';
@@ -18,13 +20,9 @@ export function FeedbackModal({ visivel, tipo = 'sucesso', titulo, mensagem, aoF
                     isSucesso ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
                 }`}>
                     {isSucesso ? (
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                        </svg>
+                        <Check className="w-8 h-8" />
                     ) : (
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <X className="w-8 h-8" />
                     )}
                 </div>
 
@@ -50,4 +48,3 @@ export function FeedbackModal({ visivel, tipo = 'sucesso', titulo, mensagem, aoF
         </div>
     );
 }
-
