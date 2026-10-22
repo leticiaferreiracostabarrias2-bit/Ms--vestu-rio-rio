@@ -26,8 +26,13 @@ export const autenticarToken = (
     const chaveSecreta = process.env.JWT_SECRET || 'chave_secreta_ms2_vestuario';
     const dadosDecodificados = jwt.verify(token, chaveSecreta) as any;
 
+    // Garante a leitura do ID independentemente do nome usado ao assinar o JWT
+    const idUsuarioDecodificado = Number(
+      dadosDecodificados.idUsuario || dadosDecodificados.id || dadosDecodificados.id_usuario
+    );
+
     req.usuarioLogado = {
-      idUsuario: dadosDecodificados.idUsuario,
+      idUsuario: idUsuarioDecodificado,
       email: dadosDecodificados.email,
       cargo: dadosDecodificados.cargo
     };

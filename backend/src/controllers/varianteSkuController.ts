@@ -52,27 +52,25 @@ export class VarianteSkuController {
     }
   }
 
-static async buscarPorSku(req: Request, res: Response): Promise<Response> {
-  try {
-    const { sku } = req.params;
+  static async buscarPorSku(req: Request, res: Response): Promise<Response> {
+    try {
+      const { sku } = req.params;
+      const skuString = Array.isArray(sku) ? sku[0] : (sku as string);
 
-    // Garante a conversão e estreitamento de tipo para string pura
-    const skuString = Array.isArray(sku) ? sku[0] : (sku as string);
+      if (!skuString) {
+        return res.status(400).json({ mensagem: 'O código SKU é obrigatório.' });
+      }
 
-    if (!skuString) {
-      return res.status(400).json({ mensagem: 'O código SKU é obrigatório.' });
+      const variante = await VarianteSkuModel.buscarPorSku(skuString);
+      if (!variante) {
+        return res.status(404).json({ mensagem: 'SKU não encontrado.' });
+      }
+
+      return res.status(200).json(variante);
+    } catch (erro) {
+      return res.status(500).json({ mensagem: 'Erro interno ao buscar por SKU.', erro });
     }
-
-    const variante = await VarianteSkuModel.buscarPorSku(skuString);
-    if (!variante) {
-      return res.status(404).json({ mensagem: 'SKU não encontrado.' });
-    }
-
-    return res.status(200).json(variante);
-  } catch (erro) {
-    return res.status(500).json({ mensagem: 'Erro interno ao buscar por SKU.', erro });
   }
-}
 
   static async listarTodas(_req: Request, res: Response): Promise<Response> {
     try {
@@ -80,6 +78,23 @@ static async buscarPorSku(req: Request, res: Response): Promise<Response> {
       return res.status(200).json(variantes);
     } catch (erro) {
       return res.status(500).json({ mensagem: 'Erro interno ao listar variantes SKU.', erro });
+    }
+  }
+
+  // Novo método no controller para a rota por categoria
+  static async listarPorCategoria(req: Request, res: Response): Promise<Response> {
+    try {
+      const { categoriaId } = req.params;
+      const idNum = Number(categoriaId);
+
+      if (isNaN(idNum)) {
+        return res.status(400).json({ mensagem: 'ID de categoria inválido.' });
+      }
+
+      const variantes = await VarianteSkuModel.buscarPorCategoria(idNum);
+      return res.status(200).json(variantes);
+    } catch (erro) {
+      return res.status(500).json({ mensagem: 'Erro ao buscar variantes por categoria.', erro });
     }
   }
 

@@ -2,9 +2,6 @@ import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { IVarianteSku } from '../types/index';
 import { db } from '../config/database';
 
-/**
- * Model estático focado na leitura, manipulação e persistência de Variantes SKU
- */
 export class VarianteSkuModel {
 
   static async criar(variante: Omit<IVarianteSku, 'idVarianteSku'>): Promise<number> {
@@ -35,17 +32,21 @@ export class VarianteSkuModel {
   static async buscarPorId(id: number): Promise<IVarianteSku | null> {
     const queryStr = `
       SELECT 
-        idvariantes_sku AS idVarianteSku, 
-        sku, 
-        codigo_barras AS codigoBarras, 
-        tamanho, 
-        cor, 
-        preco_venda AS precoVenda, 
-        quantidade_estoque AS quantidadeEstoque, 
-        quantidade_reservada AS quantidadeReservada, 
-        produtos_idprodutos AS produtoId
-      FROM variantes_sku 
-      WHERE idvariantes_sku = ? 
+        v.idvariantes_sku AS idVarianteSku, 
+        v.sku, 
+        v.codigo_barras AS codigoBarras, 
+        v.tamanho, 
+        v.cor, 
+        v.preco_venda AS precoVenda, 
+        v.quantidade_estoque AS quantidadeEstoque, 
+        v.quantidade_reservada AS quantidadeReservada, 
+        v.produtos_idprodutos AS produtoId,
+        p.nome AS nomeProduto,
+        c.nome AS nomeCategoria
+      FROM variantes_sku v
+      INNER JOIN produtos p ON v.produtos_idprodutos = p.idprodutos
+      LEFT JOIN categorias c ON p.categorias_idcategorias = c.idcategorias
+      WHERE v.idvariantes_sku = ? 
       LIMIT 1
     `;
 
@@ -67,9 +68,11 @@ export class VarianteSkuModel {
         v.cor, 
         v.preco_venda AS precoVenda, 
         v.quantidade_estoque AS quantidadeEstoque, 
-        p.nome AS nomeProduto
+        p.nome AS nomeProduto,
+        c.nome AS nomeCategoria
       FROM variantes_sku v
       INNER JOIN produtos p ON v.produtos_idprodutos = p.idprodutos
+      LEFT JOIN categorias c ON p.categorias_idcategorias = c.idcategorias
       WHERE v.codigo_barras = ? AND p.ativo = 1
       LIMIT 1
     `;
@@ -85,17 +88,21 @@ export class VarianteSkuModel {
   static async buscarPorSku(sku: string): Promise<IVarianteSku | null> {
     const queryStr = `
       SELECT 
-        idvariantes_sku AS idVarianteSku, 
-        sku, 
-        codigo_barras AS codigoBarras, 
-        tamanho, 
-        cor, 
-        preco_venda AS precoVenda, 
-        quantidade_estoque AS quantidadeEstoque, 
-        quantidade_reservada AS quantidadeReservada, 
-        produtos_idprodutos AS produtoId
-      FROM variantes_sku 
-      WHERE sku = ? 
+        v.idvariantes_sku AS idVarianteSku, 
+        v.sku, 
+        v.codigo_barras AS codigoBarras, 
+        v.tamanho, 
+        v.cor, 
+        v.preco_venda AS precoVenda, 
+        v.quantidade_estoque AS quantidadeEstoque, 
+        v.quantidade_reservada AS quantidadeReservada, 
+        v.produtos_idprodutos AS produtoId,
+        p.nome AS nomeProduto,
+        c.nome AS nomeCategoria
+      FROM variantes_sku v
+      INNER JOIN produtos p ON v.produtos_idprodutos = p.idprodutos
+      LEFT JOIN categorias c ON p.categorias_idcategorias = c.idcategorias
+      WHERE v.sku = ? 
       LIMIT 1
     `;
 
@@ -119,14 +126,48 @@ export class VarianteSkuModel {
         v.quantidade_estoque AS quantidadeEstoque, 
         v.quantidade_reservada AS quantidadeReservada, 
         v.produtos_idprodutos AS produtoId,
-        p.nome AS nomeProduto
+        p.nome AS nomeProduto,
+        c.nome AS nomeCategoria,
+        p.categorias_idcategorias AS categoriaId
       FROM variantes_sku v
       INNER JOIN produtos p ON v.produtos_idprodutos = p.idprodutos
-      ORDER BY v.sku ASC
+      LEFT JOIN categorias c ON p.categorias_idcategorias = c.idcategorias
+      ORDER BY p.nome ASC, v.sku ASC
     `;
 
     const [linhas] = await db.execute<RowDataPacket[]>({
       sql: queryStr
+    });
+
+    return linhas;
+  }
+
+  // Novo método para filtrar por Categoria
+  static async buscarPorCategoria(categoriaId: number): Promise<any[]> {
+    const queryStr = `
+      SELECT 
+        v.idvariantes_sku AS idVarianteSku, 
+        v.sku, 
+        v.codigo_barras AS codigoBarras, 
+        v.tamanho, 
+        v.cor, 
+        v.preco_venda AS precoVenda, 
+        v.quantidade_estoque AS quantidadeEstoque, 
+        v.quantidade_reservada AS quantidadeReservada, 
+        v.produtos_idprodutos AS produtoId,
+        p.nome AS nomeProduto,
+        c.nome AS nomeCategoria,
+        p.categorias_idcategorias AS categoriaId
+      FROM variantes_sku v
+      INNER JOIN produtos p ON v.produtos_idprodutos = p.idprodutos
+      LEFT JOIN categorias c ON p.categorias_idcategorias = c.idcategorias
+      WHERE p.categorias_idcategorias = ? AND p.ativo = 1
+      ORDER BY p.nome ASC, v.sku ASC
+    `;
+
+    const [linhas] = await db.execute<RowDataPacket[]>({
+      sql: queryStr,
+      values: [categoriaId]
     });
 
     return linhas;
@@ -147,9 +188,6 @@ export class VarianteSkuModel {
     return result.affectedRows > 0;
   }
 
-  /**
-   * Atualiza as informações cadastrais de uma variante SKU
-   */
   static async atualizar(id: number, variante: Partial<Omit<IVarianteSku, 'idVarianteSku'>>): Promise<boolean> {
     const campos: string[] = [];
     const valores: any[] = [];
@@ -204,9 +242,6 @@ export class VarianteSkuModel {
     return result.affectedRows > 0;
   }
 
-  /**
-   * Remove uma variante SKU pelo ID
-   */
   static async excluir(id: number): Promise<boolean> {
     const queryStr = `
       DELETE FROM variantes_sku 

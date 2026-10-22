@@ -7,12 +7,15 @@ import { db } from '../config/database';
  */
 export class ClienteModel {
 
+  /**
+   * Insere um novo cliente no banco de dados (sem senha)
+   */
   static async criar(cliente: Omit<ICliente, 'idCliente' | 'criadoEm'>): Promise<number> {
     const queryStr = `
-      INSERT INTO clientes (nome, cpf_cnpj, telefone, email, senha)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO clientes (nome, cpf_cnpj, telefone, email)
+      VALUES (?, ?, ?, ?)
     `;
-    const valores = [cliente.nome, cliente.cpfCnpj || null, cliente.telefone || null, cliente.email || null, cliente.senha];
+    const valores = [cliente.nome, cliente.cpfCnpj || null, cliente.telefone || null, cliente.email || null];
 
     const [result] = await db.execute<ResultSetHeader>({
       sql: queryStr,
@@ -22,6 +25,9 @@ export class ClienteModel {
     return result.insertId;
   }
 
+  /**
+   * Busca um cliente pelo seu ID
+   */
   static async buscarPorId(id: number): Promise<ICliente | null> {
     const queryStr = `
       SELECT 
@@ -30,7 +36,6 @@ export class ClienteModel {
         cpf_cnpj AS cpfCnpj, 
         telefone, 
         email, 
-        senha,
         criado_em AS criadoEm 
       FROM clientes 
       WHERE idclientes = ? 
@@ -45,6 +50,9 @@ export class ClienteModel {
     return linhas.length ? (linhas[0] as ICliente) : null;
   }
 
+  /**
+   * Busca um cliente pelo CPF ou CNPJ
+   */
   static async buscarPorCpfCnpj(cpfCnpj: string): Promise<ICliente | null> {
     const queryStr = `
       SELECT 
@@ -53,7 +61,6 @@ export class ClienteModel {
         cpf_cnpj AS cpfCnpj, 
         telefone, 
         email, 
-        senha,
         criado_em AS criadoEm 
       FROM clientes 
       WHERE cpf_cnpj = ? 
@@ -68,7 +75,10 @@ export class ClienteModel {
     return linhas.length ? (linhas[0] as ICliente) : null;
   }
 
-  static async buscarTodos(): Promise<Omit<ICliente, 'senha'>[]> {
+  /**
+   * Lista todos os clientes cadastrados em ordem alfabética
+   */
+  static async buscarTodos(): Promise<ICliente[]> {
     const queryStr = `
       SELECT 
         idclientes AS idCliente, 
@@ -85,7 +95,7 @@ export class ClienteModel {
       sql: queryStr
     });
 
-    return linhas as Omit<ICliente, 'senha'>[];
+    return linhas as ICliente[];
   }
 
   /**
@@ -101,19 +111,15 @@ export class ClienteModel {
     }
     if (cliente.cpfCnpj !== undefined) {
       campos.push('cpf_cnpj = ?');
-      valores.push(cliente.cpfCnpj);
+      valores.push(cliente.cpfCnpj || null);
     }
     if (cliente.telefone !== undefined) {
       campos.push('telefone = ?');
-      valores.push(cliente.telefone);
+      valores.push(cliente.telefone || null);
     }
     if (cliente.email !== undefined) {
       campos.push('email = ?');
-      valores.push(cliente.email);
-    }
-    if (cliente.senha !== undefined) {
-      campos.push('senha = ?');
-      valores.push(cliente.senha);
+      valores.push(cliente.email || null);
     }
 
     if (campos.length === 0) return false;
@@ -134,7 +140,7 @@ export class ClienteModel {
   }
 
   /**
-   * Remove a conta de um cliente pelo ID
+   * Remove o cadastro de um cliente pelo ID
    */
   static async excluir(id: number): Promise<boolean> {
     const queryStr = `

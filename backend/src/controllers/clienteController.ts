@@ -2,18 +2,19 @@ import { Request, Response } from 'express';
 import { ClienteModel } from '../models/clienteModel';
 
 export class ClienteController {
+  /**
+   * Cadastra um novo cliente na base de dados (Apenas o nome é obrigatório)
+   */
   static async criar(req: Request, res: Response): Promise<Response> {
     try {
-      const { nome, cpfCnpj, telefone, email, senha } = req.body;
+      const { nome, cpfCnpj, telefone, email } = req.body;
 
+      // Validação do campo obrigatório Nome
       if (!nome || typeof nome !== 'string' || nome.trim() === '') {
         return res.status(400).json({ mensagem: 'O nome do cliente é obrigatório.' });
       }
 
-      if (!senha) {
-        return res.status(400).json({ mensagem: 'A senha é obrigatória para cadastrar a conta do cliente.' });
-      }
-
+      // Se CPF/CNPJ for informado, verifica duplicidade no banco
       if (cpfCnpj) {
         const clienteExistente = await ClienteModel.buscarPorCpfCnpj(cpfCnpj);
         if (clienteExistente) {
@@ -21,17 +22,25 @@ export class ClienteController {
         }
       }
 
-      const idCliente = await ClienteModel.criar({ nome, cpfCnpj, telefone, email, senha });
+      // Criação do registro do cliente sem senha
+      const idCliente = await ClienteModel.criar({
+        nome: nome.trim(),
+        cpfCnpj,
+        telefone,
+        email,
+      });
       return res.status(201).json({ mensagem: 'Cliente cadastrado com sucesso.', idCliente });
     } catch (erro) {
       return res.status(500).json({ mensagem: 'Erro interno ao cadastrar cliente.', erro });
     }
   }
 
+  /**
+   * Busca um cliente pelo CPF/CNPJ
+   */
   static async buscarPorCpfCnpj(req: Request, res: Response): Promise<Response> {
     try {
       const { cpfCnpj } = req.params;
-
       const cpfCnpjString = Array.isArray(cpfCnpj) ? cpfCnpj[0] : (cpfCnpj as string);
 
       if (!cpfCnpjString) {
@@ -44,14 +53,15 @@ export class ClienteController {
         return res.status(404).json({ mensagem: 'Cliente não encontrado.' });
       }
 
-      // Omite a senha no retorno de busca pública/interna
-      const { senha, ...clienteSemSenha } = cliente;
-      return res.status(200).json(clienteSemSenha);
+      return res.status(200).json(cliente);
     } catch (erro) {
       return res.status(500).json({ mensagem: 'Erro interno ao buscar cliente.', erro });
     }
   }
 
+  /**
+   * Listagem de todos os clientes cadastrados
+   */
   static async listarTodos(_req: Request, res: Response): Promise<Response> {
     try {
       const clientes = await ClienteModel.buscarTodos();
@@ -62,20 +72,16 @@ export class ClienteController {
   }
 
   /**
-   * Atualiza as informações do cliente somente se a senha fornecida for válida
+   * Atualiza as informações do cliente pelo ID (sem checagem de senha)
    */
   static async atualizar(req: Request, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const { nome, cpfCnpj, telefone, email, senhaAtual, novaSenha } = req.body;
+      const { nome, cpfCnpj, telefone, email } = req.body;
 
       const idNum = Number(id);
       if (isNaN(idNum)) {
         return res.status(400).json({ mensagem: 'ID de cliente inválido.' });
-      }
-
-      if (!senhaAtual) {
-        return res.status(400).json({ mensagem: 'A senha atual é obrigatória para atualizar os dados da conta.' });
       }
 
       const clienteExistente = await ClienteModel.buscarPorId(idNum);
@@ -83,11 +89,7 @@ export class ClienteController {
         return res.status(404).json({ mensagem: 'Cliente não encontrado.' });
       }
 
-      // Confirmação de segurança: compara a senha enviada com a armazenada
-      if (clienteExistente.senha !== senhaAtual) {
-        return res.status(401).json({ mensagem: 'Senha incorreta. Não foi possível atualizar os dados do cliente.' });
-      }
-
+      // Se alterou CPF/CNPJ, checa se não pertence a outro cliente
       if (cpfCnpj && cpfCnpj !== clienteExistente.cpfCnpj) {
         const cpfEmUso = await ClienteModel.buscarPorCpfCnpj(cpfCnpj);
         if (cpfEmUso) {
@@ -99,8 +101,7 @@ export class ClienteController {
         nome,
         cpfCnpj,
         telefone,
-        email,
-        senha: novaSenha || undefined
+        email
       });
 
       return res.status(200).json({ mensagem: 'Dados do cliente atualizados com sucesso.' });
@@ -110,20 +111,15 @@ export class ClienteController {
   }
 
   /**
-   * Exclui a conta do cliente mediante validação de senha
+   * Exclui o cadastro do cliente pelo ID
    */
   static async excluir(req: Request, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const { senhaAtual } = req.body;
 
       const idNum = Number(id);
       if (isNaN(idNum)) {
         return res.status(400).json({ mensagem: 'ID de cliente inválido.' });
-      }
-
-      if (!senhaAtual) {
-        return res.status(400).json({ mensagem: 'A senha é obrigatória para confirmar a exclusão da conta.' });
       }
 
       const clienteExistente = await ClienteModel.buscarPorId(idNum);
@@ -131,13 +127,8 @@ export class ClienteController {
         return res.status(404).json({ mensagem: 'Cliente não encontrado.' });
       }
 
-      // Confirmação de segurança por senha
-      if (clienteExistente.senha !== senhaAtual) {
-        return res.status(401).json({ mensagem: 'Senha incorreta. A exclusão da conta foi negada.' });
-      }
-
       await ClienteModel.excluir(idNum);
-      return res.status(200).json({ mensagem: 'Conta do cliente excluída com sucesso.' });
+      return res.status(200).json({ mensagem: 'Cadastro do cliente excluído com sucesso.' });
     } catch (erro) {
       return res.status(500).json({ mensagem: 'Erro interno ao excluir cliente.', erro });
     }

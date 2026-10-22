@@ -21,13 +21,16 @@ router.post('/', UsuarioController.criar);
 // Encerramento de sessão
 router.post('/logout', autenticarToken, UsuarioController.logout);
 
+// Lista simplificada de vendedores (Acessível por todos autenticados)
+router.get('/vendedores', autenticarToken, UsuarioController.listarVendedores);
+
 // Listagem restrita a Gerentes e Admins
 router.get('/', autenticarToken, autorizarCargos(['GERENTE', 'ADMIN']), UsuarioController.listarTodos);
 
-// Atualização de usuário por ID (Exige envio da senhaAtual no body)
+// Atualização de usuário por ID
 router.put('/:id', autenticarToken, autorizarCargos(['GERENTE', 'ADMIN']), UsuarioController.atualizar);
 
-// Exclusão de usuário por ID (Restrito EXCLUSIVAMENTE a GERENTE e ADMIN)
+// Exclusão de usuário por ID
 router.delete('/:id', autenticarToken, autorizarCargos(['GERENTE', 'ADMIN']), UsuarioController.excluir);
 
 export default router;

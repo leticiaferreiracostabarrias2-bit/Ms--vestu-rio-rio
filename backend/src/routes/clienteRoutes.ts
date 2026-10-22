@@ -8,19 +8,19 @@ const router = Router();
 // ROTAS PRIVADAS E PROTEGIDAS (Exigem Token JWT)
 // ==========================================
 
-// Cadastro de cliente exige operador autenticado no caixa
+// Cadastro de cliente diretamente pelo caixa ou painel (Não exige senha)
 router.post('/', autenticarToken, ClienteController.criar);
 
-// Listagem de clientes da loja totalmente restrita
+// Listagem de clientes da loja
 router.get('/', autenticarToken, ClienteController.listarTodos);
 
-// Consulta por CPF/CNPJ restrita a usuários logados no PDV
+// Consulta individual por CPF/CNPJ
 router.get('/cpf/:cpfCnpj', autenticarToken, ClienteController.buscarPorCpfCnpj);
 
-// Atualização de dados do cliente (Requer envio de senhaAtual no body)
+// Atualização de dados cadastrais do cliente
 router.put('/:id', autenticarToken, ClienteController.atualizar);
 
-// Exclusão de conta do cliente (Requer envio de senhaAtual no body)
+// Exclusão de cadastro do cliente pelo ID
 router.delete('/:id', autenticarToken, ClienteController.excluir);
 
 export default router;

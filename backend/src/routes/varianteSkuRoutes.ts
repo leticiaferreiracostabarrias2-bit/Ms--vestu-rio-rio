@@ -7,8 +7,11 @@ const router = Router();
 // Endpoint para criação de variante SKU (Restrito a GERENTE e ADMIN)
 router.post('/', autenticarToken, autorizarCargos(['GERENTE', 'ADMIN']), VarianteSkuController.criar);
 
-// Listagem de todas as variantes SKU
+// Listagem de todas as variantes SKU (Protegida)
 router.get('/', autenticarToken, VarianteSkuController.listarTodas);
+
+// ROTA PROTEGIDA: Listar variantes SKU filtradas por Categoria
+router.get('/categoria/:categoriaId', autenticarToken, VarianteSkuController.listarPorCategoria);
 
 // Consulta por ID
 router.get('/:id', autenticarToken, VarianteSkuController.buscarPorId);

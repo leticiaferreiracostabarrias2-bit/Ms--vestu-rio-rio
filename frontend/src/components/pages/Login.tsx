@@ -9,7 +9,6 @@ export function Login(){
                 </h2>
                 <LoginForm/>
             </div>
-
         </div>
     )
 }

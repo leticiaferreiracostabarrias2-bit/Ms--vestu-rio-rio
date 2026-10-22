@@ -3,20 +3,34 @@ import { VendaService } from '../services/vendaService';
 import { ItemVendaModel } from '../models/itemVendaModel';
 import { db } from '../config/database';
 import { CriarVendaDTO } from '../types/index';
+import { RequisicaoAutenticada } from '../middlewares/authMiddleware';
 
 export class VendaController {
   static async processarVenda(req: Request, res: Response): Promise<Response> {
     try {
       const dadosVenda: CriarVendaDTO = req.body;
+      const reqAuth = req as RequisicaoAutenticada;
 
-      // Sobrescreve/Garante o usuarioId através do payload decodificado do Token JWT
-      const usuarioLogadoId = (req as any).usuario?.id;
-      if (usuarioLogadoId) {
-        dadosVenda.usuarioId = usuarioLogadoId;
+      // Obtém o ID do operador a partir do token decodificado (req.usuarioLogado) ou do body
+      const idOperador = reqAuth.usuarioLogado?.idUsuario || dadosVenda.usuarioId;
+
+      if (idOperador) {
+        dadosVenda.usuarioId = Number(idOperador);
       }
 
-      if (!dadosVenda.usuarioId || !dadosVenda.formaPagamento || !Array.isArray(dadosVenda.itens) || dadosVenda.itens.length === 0) {
-        return res.status(400).json({ mensagem: 'Dados incompletos para processar a venda no caixa.' });
+      // Validação do operador
+      if (!dadosVenda.usuarioId) {
+        return res.status(400).json({ 
+          mensagem: 'Operador/Usuário do caixa não identificado no token de sessão.' 
+        });
+      }
+
+      if (!dadosVenda.formaPagamento) {
+        return res.status(400).json({ mensagem: 'A forma de pagamento é obrigatória.' });
+      }
+
+      if (!Array.isArray(dadosVenda.itens) || dadosVenda.itens.length === 0) {
+        return res.status(400).json({ mensagem: 'Adicione ao menos um item no carrinho para realizar a venda.' });
       }
 
       const vendaService = new VendaService(db);
@@ -56,9 +70,6 @@ export class VendaController {
     }
   }
 
-  /**
-   * Lista o histórico detalhado de todas as compras e peças adquiridas por um cliente específico
-   */
   static async listarPorCliente(req: Request, res: Response): Promise<Response> {
     try {
       const { clienteId } = req.params;

@@ -8,9 +8,6 @@ export class UsuarioController {
   /**
    * Autentica o usuário e retorna o Token JWT
    */
-  /**
-   * Autentica o usuário e retorna o Token JWT
-   */
   static async login(req: Request, res: Response): Promise<Response> {
     try {
       const { email, senha } = req.body;
@@ -24,7 +21,6 @@ export class UsuarioController {
         return res.status(401).json({ mensagem: 'Credenciais inválidas.' });
       }
 
-      // Validação segura de senha com bcrypt
       const senhaValida = await bcrypt.compare(senha, usuario.senha);
       if (!senhaValida) {
         return res.status(401).json({ mensagem: 'Credenciais inválidas.' });
@@ -102,6 +98,28 @@ export class UsuarioController {
   }
 
   /**
+   * Lista usuários especificamente para seleção em filtros de vendas e caixa
+   */
+  static async listarVendedores(_req: Request, res: Response): Promise<Response> {
+    try {
+      const usuarios = await UsuarioModel.buscarTodos();
+      
+      // Mapeia removendo dados sensíveis como senhas
+      const vendedores = usuarios.map((u: any) => ({
+        idUsuario: u.idUsuario || u.idusuarios,
+        nome: u.nome,
+        email: u.email,
+        cargo: u.cargo
+      }));
+
+      return res.status(200).json(vendedores);
+    } catch (erro: any) {
+      console.error("❌ ERRO AO LISTAR VENDEDORES:", erro);
+      return res.status(500).json({ mensagem: 'Erro ao carregar lista de vendedores.', erro: erro?.message || erro });
+    }
+  }
+
+  /**
    * Atualiza dados de um usuário mediante verificação de senha obrigatória
    */
   static async atualizar(req: Request, res: Response): Promise<Response> {
@@ -123,7 +141,6 @@ export class UsuarioController {
         return res.status(404).json({ mensagem: 'Usuário não encontrado.' });
       }
 
-      // Valida se a senha informada corresponde à senha do cadastro no banco
       if (usuarioExistente.senha !== senhaAtual) {
         return res.status(401).json({ mensagem: 'Senha incorreta. Não foi possível atualizar os dados.' });
       }
@@ -150,7 +167,7 @@ export class UsuarioController {
   }
 
   /**
-   * Exclui um usuário pelo ID (acesso restrito aos cargos autorizados)
+   * Exclui um usuário pelo ID
    */
   static async excluir(req: Request, res: Response): Promise<Response> {
     try {

@@ -1,12 +1,11 @@
-//Esta tela cumpre com dois requisitos essenciais do sistema:
-//Consulta Geral de Vendas: Exibe a lista de todas as vendas efetuadas, com data, vendedor, cliente, forma de pagamento, valor total e status (CONCLUIDA ou CANCELADA).
-//Estorno / Cancelamento de Venda: Permite que utilizadores com permissão de GERENTE ou ADMIN cancelem uma venda. Utiliza o nosso ConfirmacaoModal atualizado com o campo obrigatório de motivo do cancelamento, executando o estorno automático das peças de volta ao stock via PATCH /vendas/:id/cancelar
-
 import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { ConfirmacaoModal } from '../ConfirmacaoModal';
 import { FeedbackModal } from '../FeedbackModal';
 import { Receipt, Search, Eye, Ban, X } from 'lucide-react';
+
+type StatusVenda = 'CONCLUIDA' | 'CANCELADA';
+type TipoFeedback = 'sucesso' | 'erro';
 
 interface VendaResumo {
   idvendas: number;
@@ -14,7 +13,7 @@ interface VendaResumo {
   valor_total: number;
   desconto: number;
   forma_pagamento: string;
-  status: 'CONCLUIDA' | 'CANCELADA';
+  status: StatusVenda;
   vendedor: string;
   cliente: string | null;
 }
@@ -30,22 +29,38 @@ interface ItemVendaDetalhe {
   cor: string;
 }
 
+interface VendaDetalhada {
+  dados: VendaResumo;
+  itens: ItemVendaDetalhe[];
+}
+
+interface FeedbackModalState {
+  visivel: boolean;
+  tipo: TipoFeedback;
+  titulo: string;
+  mensagem: string;
+}
+
+interface RespostaItensVenda {
+  itens?: ItemVendaDetalhe[];
+}
+
 export function Vendas() {
   const [vendas, setVendas] = useState<VendaResumo[]>([]);
-  const [carregandoLista, setCarregandoLista] = useState(true);
-  const [busca, setBusca] = useState('');
+  const [carregandoLista, setCarregandoLista] = useState<boolean>(true);
+  const [busca, setBusca] = useState<string>('');
 
   // Estados para o Modal de Detalhes da Venda
-  const [vendaDetalhada, setVendaDetalhada] = useState<{ dados: VendaResumo; itens: ItemVendaDetalhe[] } | null>(null);
-  const [carregandoDetalhes, setCarregandoDetalhes] = useState(false);
+  const [vendaDetalhada, setVendaDetalhada] = useState<VendaDetalhada | null>(null);
+  const [carregandoDetalhes, setCarregandoDetalhes] = useState<boolean>(false);
 
   // Estados para o Modal de Cancelamento/Estorno
   const [vendaParaCancelar, setVendaParaCancelar] = useState<VendaResumo | null>(null);
-  const [motivoCancelamento, setMotivoCancelamento] = useState('');
-  const [processandoCancelamento, setProcessandoCancelamento] = useState(false);
+  const [motivoCancelamento, setMotivoCancelamento] = useState<string>('');
+  const [processandoCancelamento, setProcessandoCancelamento] = useState<boolean>(false);
 
   // Modal de Feedback
-  const [modalFeedback, setModalFeedback] = useState<{ visivel: boolean; tipo: 'sucesso' | 'erro'; titulo: string; mensagem: string }>({
+  const [modalFeedback, setModalFeedback] = useState<FeedbackModalState>({
     visivel: false,
     tipo: 'sucesso',
     titulo: '',
@@ -56,10 +71,10 @@ export function Vendas() {
     carregarVendas();
   }, []);
 
-  const carregarVendas = async () => {
+  const carregarVendas = async (): Promise<void> => {
     setCarregandoLista(true);
     try {
-      const resposta = await api.get('/vendas');
+      const resposta = await api.get<VendaResumo[]>('/vendas');
       setVendas(resposta.data);
     } catch (erro) {
       console.error('Erro ao carregar histórico de vendas:', erro);
@@ -68,10 +83,10 @@ export function Vendas() {
     }
   };
 
-  const abrirDetalhesVenda = async (venda: VendaResumo) => {
+  const abrirDetalhesVenda = async (venda: VendaResumo): Promise<void> => {
     setCarregandoDetalhes(true);
     try {
-      const resposta = await api.get(`/vendas/${venda.idvendas}`);
+      const resposta = await api.get<RespostaItensVenda>(`/vendas/${venda.idvendas}`);
       setVendaDetalhada({
         dados: venda,
         itens: resposta.data.itens || []
@@ -88,7 +103,7 @@ export function Vendas() {
     }
   };
 
-  const confirmarEstornoVenda = async () => {
+  const confirmarEstornoVenda = async (): Promise<void> => {
     if (!vendaParaCancelar || !motivoCancelamento.trim()) return;
 
     setProcessandoCancelamento(true);
@@ -120,17 +135,21 @@ export function Vendas() {
     }
   };
 
-  const vendasFiltradas = vendas.filter(v =>
-    String(v.idvendas).includes(busca) ||
-    v.vendedor.toLowerCase().includes(busca.toLowerCase()) ||
-    (v.cliente && v.cliente.toLowerCase().includes(busca.toLowerCase())) ||
-    v.forma_pagamento.toLowerCase().includes(busca.toLowerCase())
-  );
+  // Filtragem simples e geral apenas pelo campo de pesquisa
+  const vendasFiltradas = vendas.filter((v) => {
+    const termo = busca.toLowerCase();
+    return (
+      String(v.idvendas).includes(termo) ||
+      v.vendedor.toLowerCase().includes(termo) ||
+      (v.cliente && v.cliente.toLowerCase().includes(termo)) ||
+      v.forma_pagamento.toLowerCase().includes(termo)
+    );
+  });
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
-      {/* TÍTULO DA PÁGINA */}
-      <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* TÍTULO DA PÁGINA E PESQUISA GERAL */}
+      <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
             <Receipt className="w-8 h-8 text-cyan-400" />
@@ -141,7 +160,8 @@ export function Vendas() {
           </p>
         </div>
 
-        <div className="relative w-full sm:w-80">
+        {/* CAMPO DE PESQUISA GERAL */}
+        <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
           <input
             type="text"

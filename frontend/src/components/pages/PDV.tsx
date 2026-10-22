@@ -1,23 +1,19 @@
-//Esta página atende a todos os requisitos do checkout do nosso sistema:
-// Seleção de Produtos e Variantes (SKU): Busca rápida por código/SKU, tamanho e cor com verificação de preço vindo do banco de dados.
-// Carrinho de Compras: Adição de múltiplos itens e cálculo automático do total.Vinculação de Cliente: Associação da compra a um cliente cadastrado (ou venda rápida no balcão).
-// Desconto Razoável e Regra do Gerente: Descontos até $10\%$ são aplicados normalmente; descontos acima de $10\%$ solicitam o ID/Senha de autorização de um Gerente no modal.
-// Comunicação com a API: Consome a rota POST /vendas utilizando a nossa instância api autenticada.
-
 import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import { type Cliente, type VarianteSku, type ItemCarrinho, type FormaPagamento } from '../../types';
+import { type Cliente, type VarianteSku, type ItemCarrinho, type FormaPagamento, type Categoria } from '../../types';
 import { FeedbackModal } from '../FeedbackModal';
-import { ShoppingCart, Search, UserPlus, Trash2, X, Plus, Minus } from 'lucide-react';
+import { ShoppingCart, Search, UserPlus, Trash2, X, Plus, Minus, Tag, Filter } from 'lucide-react';
 
 export function PDV() {
   // Dados do sistema
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [variantes, setVariantes] = useState<VarianteSku[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
 
   // Estados da Venda / Checkout
   const [clienteSelecionadoId, setClienteSelecionadoId] = useState<number | ''>('');
   const [skuBusca, setSkuBusca] = useState('');
+  const [categoriaSelecionadaId, setCategoriaSelecionadaId] = useState<number | ''>('');
   const [carrinho, setCarrinho] = useState<ItemCarrinho[]>([]);
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>('DINHEIRO');
   const [desconto, setDesconto] = useState<number>(0);
@@ -33,6 +29,7 @@ export function PDV() {
 
   // Estados de controle e feedback
   const [carregandoVenda, setCarregandoVenda] = useState(false);
+  const [carregandoEstoque, setCarregandoEstoque] = useState(false);
   const [modalFeedback, setModalFeedback] = useState<{ visivel: boolean; tipo: 'sucesso' | 'erro'; titulo: string; mensagem: string }>({
     visivel: false,
     tipo: 'sucesso',
@@ -46,14 +43,35 @@ export function PDV() {
 
   const carregarDadosIniciais = async () => {
     try {
-      const [resClientes, resVariantes] = await Promise.all([
+      const [resClientes, resVariantes, resCategorias] = await Promise.all([
         api.get('/clientes'),
-        api.get('/variantes')
+        api.get('/variantes'),
+        api.get('/categorias')
       ]);
       setClientes(resClientes.data);
       setVariantes(resVariantes.data);
+      setCategorias(resCategorias.data);
     } catch (erro) {
       console.error('Erro ao carregar dados do caixa:', erro);
+    }
+  };
+
+  // Alterar Categoria no Select chamando a Rota Protegida do Backend
+  const handleMudarCategoria = async (idCat: number | '') => {
+    setCategoriaSelecionadaId(idCat);
+    setCarregandoEstoque(true);
+    try {
+      if (idCat === '') {
+        const res = await api.get('/variantes');
+        setVariantes(res.data);
+      } else {
+        const res = await api.get(`/variantes/categoria/${idCat}`);
+        setVariantes(res.data);
+      }
+    } catch (erro) {
+      console.error('Erro ao filtrar por categoria:', erro);
+    } finally {
+      setCarregandoEstoque(false);
     }
   };
 
@@ -71,7 +89,6 @@ export function PDV() {
         email: novoClienteEmail.trim() || undefined
       });
 
-      // Recarrega clientes e seleciona o recém-cadastrado
       const resClientes = await api.get('/clientes');
       setClientes(resClientes.data);
       setClienteSelecionadoId(res.data.idCliente);
@@ -179,13 +196,22 @@ export function PDV() {
   const exigeAutorizacaoGerente = percentualDesconto > 10;
   const valorTotalFinal = Math.max(0, subtotalTotal - desconto);
 
-  // Filtro de Busca de SKUs
-  const variantesFiltradas = variantes.filter(v =>
-    v.sku.toLowerCase().includes(skuBusca.toLowerCase()) ||
-    (v.nomeProduto && v.nomeProduto.toLowerCase().includes(skuBusca.toLowerCase())) ||
-    v.cor.toLowerCase().includes(skuBusca.toLowerCase()) ||
-    v.tamanho.toLowerCase().includes(skuBusca.toLowerCase())
-  );
+  const getNomeCategoriaVariante = (v: VarianteSku) =>
+    (v as VarianteSku & { nomeCategoria?: string }).nomeCategoria || '';
+
+  // Filtro de Busca por Texto de SKUs / Produtos
+  const variantesFiltradas = variantes.filter(v => {
+    const termo = skuBusca.toLowerCase();
+    const nomeCategoria = getNomeCategoriaVariante(v);
+
+    return (
+      v.sku.toLowerCase().includes(termo) ||
+      (v.nomeProduto && v.nomeProduto.toLowerCase().includes(termo)) ||
+      (nomeCategoria && nomeCategoria.toLowerCase().includes(termo)) ||
+      v.cor.toLowerCase().includes(termo) ||
+      v.tamanho.toLowerCase().includes(termo)
+    );
+  });
 
   // Registrar a Venda
   const finalizarVenda = async () => {
@@ -212,7 +238,13 @@ export function PDV() {
     setCarregandoVenda(true);
 
     try {
+      // Tenta resgatar os dados do operador logado do localStorage para garantir o usuarioId
+      const usuarioSalvo = localStorage.getItem('usuario');
+      const usuarioObj = usuarioSalvo ? JSON.parse(usuarioSalvo) : null;
+      const usuarioId = usuarioObj?.id || usuarioObj?.idUsuario || usuarioObj?.id_usuario;
+
       const payload = {
+        usuarioId: usuarioId ? Number(usuarioId) : undefined,
         clienteId: clienteSelecionadoId ? Number(clienteSelecionadoId) : undefined,
         formaPagamento,
         desconto: Number(desconto),
@@ -233,7 +265,6 @@ export function PDV() {
         mensagem: `Venda #${resposta.data.idVenda} concluída. Valor Total: R$ ${resposta.data.valorTotal.toFixed(2)}`
       });
 
-      // Limpa formulário e recarrega estoque do banco
       setCarrinho([]);
       setDesconto(0);
       setGerenteId('');
@@ -255,7 +286,7 @@ export function PDV() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
-      {/* CABEÇALHO DO CAIXA COM SELEÇÃO E CADASTRO RÁPIDO DE CLIENTE */}
+      {/* CABEÇALHO DO CAIXA */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
@@ -297,7 +328,7 @@ export function PDV() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* ÁREA DE CONSULTA DE ESTOQUE (7 Colunas - APENAS LEITURA) */}
+        {/* ÁREA DE CONSULTA DE ESTOQUE */}
         <div className="lg:col-span-7 bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-4">
           <div className="flex items-center justify-between gap-4 border-b border-slate-700 pb-3">
             <div>
@@ -309,60 +340,101 @@ export function PDV() {
             </span>
           </div>
 
-          {/* Filtro de Busca */}
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-            <input
-              type="text"
-              placeholder="Pesquisar por SKU, nome da peça, cor ou tamanho..."
-              value={skuBusca}
-              onChange={(e) => setSkuBusca(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 p-3 text-sm focus:outline-none focus:border-cyan-500"
-            />
+          {/* BARRA DE FILTROS: SELECT DE CATEGORIA + CAMPO DE PESQUISA */}
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+            <div className="sm:col-span-5 relative">
+              <Filter className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+              <select
+                value={categoriaSelecionadaId}
+                onChange={(e) => handleMudarCategoria(e.target.value ? Number(e.target.value) : '')}
+                className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl pl-10 pr-3 py-3 text-sm focus:outline-none focus:border-cyan-500"
+              >
+                <option value="">Todas as Categorias</option>
+                {categorias.map(cat => (
+                  <option key={cat.idCategoria} value={cat.idCategoria}>
+                    {cat.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="sm:col-span-7 relative">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+              <input
+                type="text"
+                placeholder="Pesquisar SKU, peça, cor ou tamanho..."
+                value={skuBusca}
+                onChange={(e) => setSkuBusca(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 text-white placeholder-slate-500 rounded-xl pl-10 p-3 text-sm focus:outline-none focus:border-cyan-500"
+              />
+            </div>
           </div>
 
           {/* Grade do Estoque */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[480px] overflow-y-auto pr-1">
-            {variantesFiltradas.map((v) => (
-              <div
-                key={v.idVarianteSku}
-                onClick={() => adicionarAoCarrinho(v)}
-                className={`p-4 rounded-xl border transition cursor-pointer flex flex-col justify-between ${
-                  v.quantidadeEstoque > 0
-                    ? 'bg-slate-900/80 border-slate-700 hover:border-cyan-500 hover:bg-slate-900'
-                    : 'bg-slate-900/30 border-red-500/30 opacity-60 cursor-not-allowed'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
-                      {v.sku}
-                    </span>
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
-                      v.quantidadeEstoque > 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
-                    }`}>
-                      {v.quantidadeEstoque > 0 ? `Estoque: ${v.quantidadeEstoque} un.` : 'Sem Estoque'}
-                    </span>
-                  </div>
-
-                  <h3 className="text-white font-bold text-sm line-clamp-1">{v.nomeProduto || 'Peça Vestuário'}</h3>
-                  <p className="text-slate-400 text-xs mt-0.5">
-                    Tamanho: <strong className="text-slate-200">{v.tamanho}</strong> | Cor: <strong className="text-slate-200">{v.cor}</strong>
-                  </p>
+          {carregandoEstoque ? (
+            <div className="text-center py-12 text-slate-400 text-sm">Carregando itens...</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[480px] overflow-y-auto pr-1">
+              {variantesFiltradas.length === 0 ? (
+                <div className="col-span-2 text-center py-10 text-slate-500 text-sm">
+                  Nenhuma peça encontrada para os filtros selecionados.
                 </div>
+              ) : (
+                variantesFiltradas.map((v) => {
+                  const nomeCategoria = getNomeCategoriaVariante(v);
 
-                <div className="mt-3 flex items-center justify-between border-t border-slate-800 pt-2">
-                  <span className="text-xs text-slate-400">Preço Tabela</span>
-                  <span className="text-lg font-black text-emerald-400">
-                    R$ {Number(v.precoVenda).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+                  return (
+                    <div
+                      key={v.idVarianteSku}
+                      onClick={() => adicionarAoCarrinho(v)}
+                      className={`p-4 rounded-xl border transition cursor-pointer flex flex-col justify-between ${
+                        v.quantidadeEstoque > 0
+                          ? 'bg-slate-900/80 border-slate-700 hover:border-cyan-500 hover:bg-slate-900'
+                          : 'bg-slate-900/30 border-red-500/30 opacity-60 cursor-not-allowed'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+                            {v.sku}
+                          </span>
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
+                            v.quantidadeEstoque > 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                          }`}>
+                            {v.quantidadeEstoque > 0 ? `Estoque: ${v.quantidadeEstoque} un.` : 'Sem Estoque'}
+                          </span>
+                        </div>
+
+                        <h3 className="text-white font-bold text-sm line-clamp-1">{v.nomeProduto || 'Peça Vestuário'}</h3>
+
+                        {/* Exibição da Categoria do Produto */}
+                        {nomeCategoria && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-300 bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-md mt-1">
+                            <Tag className="w-3 h-3 text-cyan-400" />
+                            {nomeCategoria}
+                          </span>
+                        )}
+
+                        <p className="text-slate-400 text-xs mt-1">
+                          Tamanho: <strong className="text-slate-200">{v.tamanho}</strong> | Cor: <strong className="text-slate-200">{v.cor}</strong>
+                        </p>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between border-t border-slate-800 pt-2">
+                        <span className="text-xs text-slate-400">Preço Tabela</span>
+                        <span className="text-lg font-black text-emerald-400">
+                          R$ {Number(v.precoVenda).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
 
-        {/* ÁREA DA VENDA E CHECKOUT (5 Colunas) */}
+        {/* ÁREA DA VENDA E CHECKOUT */}
         <div className="lg:col-span-5 bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6 flex flex-col justify-between">
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-slate-700 pb-3">
@@ -384,7 +456,7 @@ export function PDV() {
                     <div className="flex-1 min-w-0">
                       <h4 className="text-white text-sm font-bold truncate">{item.nomeProduto}</h4>
                       <p className="text-xs text-slate-400">
-                        {item.sku} | {item.tamanho} - {item.cor}
+                        {item.sku} | {item.tamanho} | {item.cor}
                       </p>
                       <span className="text-xs text-emerald-400 font-semibold">
                         R$ {item.precoUnitario.toFixed(2)} un.
@@ -470,7 +542,7 @@ export function PDV() {
               </div>
               <div className="flex justify-between text-xs text-amber-400">
                 <span>Desconto ({percentualDesconto.toFixed(1)}%):</span>
-                <span>- R$ {desconto.toFixed(2)}</span>
+                <span>R$ {desconto.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-lg font-black text-white border-t border-slate-800 pt-2">
                 <span>Total a Pagar:</span>
